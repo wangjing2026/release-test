@@ -32,11 +32,14 @@ jobs:
       - name: Find Previous Release Tag
         id: previous_tag
         run: |
-
           PREVIOUS_TAG=$(git tag \
             --list "release-*" \
             --sort=-creatordate \
-            | head -n 1)
+            | sed -n '2p')
+
+          if [ -z "$PREVIOUS_TAG" ]; then
+            echo "No previous release found"
+          fi
 
           echo "previous_tag=$PREVIOUS_TAG" >> $GITHUB_OUTPUT
 
@@ -81,13 +84,9 @@ jobs:
         run: |
 
           if [ -s source-files.txt ]; then
-
             zip -q source-only.zip $(cat source-files.txt)
-
           else
-
             touch source-only.zip
-
           fi
 
       - name: Create Release Note
@@ -98,8 +97,8 @@ jobs:
 
           echo "Target Branch: ${{ inputs.target_branch }}" >> release-note.md
           echo "Release Type : ${{ inputs.release_kind }}" >> release-note.md
-
           echo "Previous Release Tag: ${{ steps.previous_tag.outputs.previous_tag }}" >> release-note.md
+
           echo '' >> release-note.md
 
           echo '## Changed Files' >> release-note.md
@@ -125,6 +124,12 @@ jobs:
 
           echo "tag=$TAG" >> $GITHUB_OUTPUT
 
+      - name: Get Target Commit
+        id: target_commit
+        run: |
+
+          echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -135,5 +140,6 @@ jobs:
             "${{ steps.tag.outputs.tag }}" \
             source-files.txt \
             source-only.zip \
+            --target "${{ steps.target_commit.outputs.sha }}" \
             --title "${{ steps.tag.outputs.tag }}" \
             --notes-file release-note.md
