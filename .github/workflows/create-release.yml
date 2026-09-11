@@ -27,13 +27,46 @@ jobs:
         with:
           ref: ${{ inputs.target_branch }}
           fetch-depth: 0
+          fetch-tags: true
+
+      - name: Find Previous Release Tag
+        id: previous_tag
+        run: |
+
+          PREVIOUS_TAG=$(git tag \
+            --list "release-*" \
+            --sort=-creatordate \
+            | head -n 1)
+
+          echo "previous_tag=$PREVIOUS_TAG" >> $GITHUB_OUTPUT
+
+          echo "Previous Tag: $PREVIOUS_TAG"
 
       - name: Generate Changed File List
         run: |
-          git diff --name-only HEAD~1 HEAD > changed-files.txt || true
+
+          if [ -n "${{ steps.previous_tag.outputs.previous_tag }}" ]; then
+
+            echo "Compare:"
+            echo "${{ steps.previous_tag.outputs.previous_tag }}"
+            echo " -> HEAD"
+
+            git diff --name-only \
+              "${{ steps.previous_tag.outputs.previous_tag }}" \
+              HEAD \
+              > changed-files.txt
+
+          else
+
+            echo "First Release"
+
+            git ls-files > changed-files.txt
+
+          fi
 
       - name: Generate Source File List
         run: |
+
           find . -type f \
             \( \
               -name '*.java' \
@@ -46,42 +79,58 @@ jobs:
 
       - name: Create Source ZIP
         run: |
+
           if [ -s source-files.txt ]; then
+
             zip -q source-only.zip $(cat source-files.txt)
+
           else
+
             touch source-only.zip
+
           fi
 
       - name: Create Release Note
         run: |
+
           echo '# Release Notes' > release-note.md
           echo '' >> release-note.md
 
           echo "Target Branch: ${{ inputs.target_branch }}" >> release-note.md
           echo "Release Type : ${{ inputs.release_kind }}" >> release-note.md
+
+          echo "Previous Release Tag: ${{ steps.previous_tag.outputs.previous_tag }}" >> release-note.md
           echo '' >> release-note.md
 
           echo '## Changed Files' >> release-note.md
           echo '' >> release-note.md
 
           if [ -s changed-files.txt ]; then
+
             echo '```text' >> release-note.md
             cat changed-files.txt >> release-note.md
             echo '```' >> release-note.md
+
           else
+
             echo 'No changed files.' >> release-note.md
+
           fi
 
       - name: Generate Tag
         id: tag
         run: |
+
           TAG=release-${{ inputs.release_kind }}-$(date +%Y%m%d-%H%M%S)
+
           echo "tag=$TAG" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
+
         run: |
+
           gh release create \
             "${{ steps.tag.outputs.tag }}" \
             source-files.txt \
