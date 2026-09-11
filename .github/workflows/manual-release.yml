@@ -1,0 +1,20 @@
+name: Manual Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_branch:
+        description: "Release target branch"
+        required: true
+        default: release/test
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    uses: ./.github/workflows/create-release.yml
+    with:
+      target_branch: ${{ inputs.target_branch }}
+      release_kind: manual

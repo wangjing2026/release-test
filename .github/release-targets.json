@@ -1,0 +1,23 @@
+{
+  "default_extensions": [
+    "java",
+    "xml",
+    "yml",
+    "yaml",
+    "sql",
+    "json"
+  ],
+  "targets": [
+    {
+      "branch": "release/test",
+      "enabled": true,
+      "extensions": [
+        "java",
+        "xml",
+        "yml",
+        "yaml",
+        "sql"
+      ]
+    }
+  ]
+}

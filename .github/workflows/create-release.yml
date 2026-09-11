@@ -1,0 +1,90 @@
+name: Create Release
+
+on:
+  workflow_call:
+    inputs:
+      target_branch:
+        description: "Release target branch"
+        required: true
+        type: string
+
+      release_kind:
+        description: "manual or weekly"
+        required: true
+        type: string
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+
+      - name: Checkout Target Branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.target_branch }}
+          fetch-depth: 0
+
+      - name: Generate Changed File List
+        run: |
+          git diff --name-only HEAD~1 HEAD > changed-files.txt || true
+
+      - name: Generate Source File List
+        run: |
+          find . -type f \
+            \( \
+              -name '*.java' \
+              -o -name '*.xml' \
+              -o -name '*.yml' \
+              -o -name '*.yaml' \
+              -o -name '*.sql' \
+            \) \
+            > source-files.txt
+
+      - name: Create Source ZIP
+        run: |
+          if [ -s source-files.txt ]; then
+            zip -q source-only.zip $(cat source-files.txt)
+          else
+            touch source-only.zip
+          fi
+
+      - name: Create Release Note
+        run: |
+          echo '# Release Notes' > release-note.md
+          echo '' >> release-note.md
+
+          echo "Target Branch: ${{ inputs.target_branch }}" >> release-note.md
+          echo "Release Type : ${{ inputs.release_kind }}" >> release-note.md
+          echo '' >> release-note.md
+
+          echo '## Changed Files' >> release-note.md
+          echo '' >> release-note.md
+
+          if [ -s changed-files.txt ]; then
+            echo '```text' >> release-note.md
+            cat changed-files.txt >> release-note.md
+            echo '```' >> release-note.md
+          else
+            echo 'No changed files.' >> release-note.md
+          fi
+
+      - name: Generate Tag
+        id: tag
+        run: |
+          TAG=release-${{ inputs.release_kind }}-$(date +%Y%m%d-%H%M%S)
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create \
+            "${{ steps.tag.outputs.tag }}" \
+            source-files.txt \
+            source-only.zip \
+            --title "${{ steps.tag.outputs.tag }}" \
+            --notes-file release-note.md

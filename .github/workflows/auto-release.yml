@@ -1,0 +1,17 @@
+name: Auto Weekly Release
+
+on:
+  schedule:
+    - cron: "0 0 * * 1"
+
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    uses: ./.github/workflows/create-release.yml
+    with:
+      target_branch: release/test
+      release_kind: weekly
