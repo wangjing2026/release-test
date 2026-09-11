@@ -32,10 +32,13 @@ jobs:
       - name: Find Previous Release Tag
         id: previous_tag
         run: |
+
+          BRANCH_TAG=$(echo "${{ inputs.target_branch }}" | tr '/' '-')
+
           PREVIOUS_TAG=$(git tag \
-            --list "release-*" \
-            --sort=-creatordate \
-            | sed -n '2p')
+            --list "${BRANCH_TAG}-${{ inputs.release_kind }}-*" \
+            | sort -r \
+            | head -n 1)
 
           if [ -z "$PREVIOUS_TAG" ]; then
             echo "No previous release found"
@@ -43,21 +46,30 @@ jobs:
 
           echo "previous_tag=$PREVIOUS_TAG" >> $GITHUB_OUTPUT
 
-          echo "Previous Tag: $PREVIOUS_TAG"
+          echo "Previous Release Tag: $PREVIOUS_TAG"
 
       - name: Generate Changed File List
         run: |
 
           if [ -n "${{ steps.previous_tag.outputs.previous_tag }}" ]; then
 
-            echo "Compare:"
+            echo "Previous Release Tag:"
             echo "${{ steps.previous_tag.outputs.previous_tag }}"
-            echo " -> HEAD"
+
+            echo "Previous Commit:"
+            git rev-list -n 1 "${{ steps.previous_tag.outputs.previous_tag }}"
+
+            echo "Current Commit:"
+            git rev-parse HEAD
 
             git diff --name-only \
               "${{ steps.previous_tag.outputs.previous_tag }}" \
               HEAD \
               > changed-files.txt
+
+            echo ""
+            echo "Changed Files:"
+            cat changed-files.txt
 
           else
 
@@ -120,9 +132,13 @@ jobs:
         id: tag
         run: |
 
-          TAG=release-${{ inputs.release_kind }}-$(date +%Y%m%d-%H%M%S)
+          BRANCH_TAG=$(echo "${{ inputs.target_branch }}" | tr '/' '-')
+
+          TAG=${BRANCH_TAG}-${{ inputs.release_kind }}-$(date +%Y%m%d-%H%M%S)
 
           echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+          echo "Current Release Version: $TAG"
 
       - name: Get Target Commit
         id: target_commit
