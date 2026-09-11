@@ -10,8 +10,46 @@ permissions:
   contents: write
 
 jobs:
+
+  load-targets:
+    runs-on: ubuntu-latest
+
+    outputs:
+      matrix: ${{ steps.get-targets.outputs.matrix }}
+
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Load Targets
+        id: get-targets
+        run: |
+
+          MATRIX=$(jq -c '
+            {
+              include:
+              [
+                .targets[]
+                | select(.enabled == true)
+                | { branch: .branch }
+              ]
+            }
+          ' .github/release-targets.json)
+
+          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
+
   create-release:
+
+    needs: load-targets
+
+    strategy:
+      fail-fast: false
+
+      matrix: ${{ fromJson(needs.load-targets.outputs.matrix) }}
+
     uses: ./.github/workflows/create-release.yml
+
     with:
-      target_branch: release/test
+      target_branch: ${{ matrix.branch }}
       release_kind: weekly

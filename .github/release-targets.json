@@ -16,7 +16,27 @@
         "xml",
         "yml",
         "yaml",
+        "sql",
+        "json"
+      ]
+    },
+    {
+      "branch": "release/product-a",
+      "enabled": false,
+      "extensions": [
+        "java",
+        "xml",
+        "yml",
+        "yaml",
         "sql"
+      ]
+    },
+    {
+      "branch": "release/product-b",
+      "enabled": false,
+      "extensions": [
+        "java",
+        "xml"
       ]
     }
   ]
