@@ -35,9 +35,15 @@ jobs:
 
           BRANCH_TAG=$(echo "${{ inputs.target_branch }}" | tr '/' '-')
 
+          echo "=== Release History ==="
+
+          git tag \
+            --list "${BRANCH_TAG}-*" \
+            --sort=-creatordate
+
           PREVIOUS_TAG=$(git tag \
-            --list "${BRANCH_TAG}-${{ inputs.release_kind }}-*" \
-            | sort -r \
+            --list "${BRANCH_TAG}-*" \
+            --sort=-creatordate \
             | head -n 1)
 
           if [ -z "$PREVIOUS_TAG" ]; then
@@ -46,7 +52,9 @@ jobs:
 
           echo "previous_tag=$PREVIOUS_TAG" >> $GITHUB_OUTPUT
 
-          echo "Previous Release Tag: $PREVIOUS_TAG"
+          echo ""
+          echo "=== Previous Release Tag ==="
+          echo "$PREVIOUS_TAG"
 
       - name: Generate Changed File List
         run: |
@@ -56,9 +64,11 @@ jobs:
             echo "Previous Release Tag:"
             echo "${{ steps.previous_tag.outputs.previous_tag }}"
 
+            echo ""
             echo "Previous Commit:"
             git rev-list -n 1 "${{ steps.previous_tag.outputs.previous_tag }}"
 
+            echo ""
             echo "Current Commit:"
             git rev-parse HEAD
 
@@ -138,7 +148,9 @@ jobs:
 
           echo "tag=$TAG" >> $GITHUB_OUTPUT
 
-          echo "Current Release Version: $TAG"
+          echo ""
+          echo "=== Current Release Version ==="
+          echo "$TAG"
 
       - name: Get Target Commit
         id: target_commit
